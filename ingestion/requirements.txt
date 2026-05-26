@@ -1,0 +1,7 @@
+datasets>=3.2.0
+openai>=1.60.0
+supabase>=2.11.0
+python-dotenv>=1.0.1
+tiktoken>=0.8.0
+tqdm>=4.67.0
+pandas>=2.2.0

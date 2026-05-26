@@ -1,0 +1,8 @@
+name = "sp500-earnings-rag"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".open-next/worker"
+
+[vars]
+# Public vars only — secrets go in Cloudflare dashboard or .dev.vars
+NEXT_PUBLIC_APP_NAME = "Earnings Insight"
