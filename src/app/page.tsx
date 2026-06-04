@@ -86,15 +86,14 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-16">
+      <main className="flex flex-1 flex-col items-center justify-center px-4 py-16">
         <div className="w-full max-w-2xl space-y-8">
           <div className="text-center space-y-3">
             <h1 className="text-4xl font-bold tracking-tight">
               Earnings Insight
             </h1>
             <p className="text-muted text-lg">
-              Ask natural-language questions over recent S&amp;P 500 earnings-call transcripts.
+              Ask natural-language questions over Magnificent Seven earnings-call transcripts.
             </p>
           </div>
 
@@ -109,7 +108,6 @@ function HomeContent() {
         </div>
       </main>
 
-      {/* About */}
       <footer className="border-t border-border bg-surface/50">
         <div className="max-w-2xl mx-auto px-4 py-10">
           <AboutSection />

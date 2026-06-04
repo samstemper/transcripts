@@ -55,6 +55,9 @@ def normalize_row(row: dict[str, Any], config: IngestConfig) -> dict[str, Any] |
     if not ticker or not company_name:
         return None
 
+    if config.allowed_tickers is not None and ticker not in config.allowed_tickers:
+        return None
+
     year, quarter = parse_period(period)
 
     earnings_date = row.get("earnings_date")
@@ -107,10 +110,16 @@ def inspect_dataset(config: IngestConfig) -> None:
         normalized = normalize_row(dict(record), config)
         if normalized:
             filtered.append(normalized)
+    ticker_note = (
+        f"tickers={','.join(sorted(config.allowed_tickers))}"
+        if config.allowed_tickers
+        else "all tickers"
+    )
     logger.info(
-        "Rows in range %s–%s: %d",
+        "Rows in range %s–%s (%s): %d",
         config.ingest_start_period,
         config.ingest_end_period,
+        ticker_note,
         len(filtered),
     )
 
@@ -154,7 +163,18 @@ def ingest(config: IngestConfig, dry_run: bool = False, cleanup: bool = False) -
         if normalized:
             rows.append(normalized)
 
-    logger.info("Filtered to %d transcripts (%s–%s)", len(rows), config.ingest_start_period, config.ingest_end_period)
+    ticker_note = (
+        f"tickers={','.join(sorted(config.allowed_tickers))}"
+        if config.allowed_tickers
+        else "all tickers"
+    )
+    logger.info(
+        "Filtered to %d transcripts (%s–%s, %s)",
+        len(rows),
+        config.ingest_start_period,
+        config.ingest_end_period,
+        ticker_note,
+    )
 
     if config.max_transcripts:
         rows = rows[: config.max_transcripts]
@@ -168,8 +188,31 @@ def ingest(config: IngestConfig, dry_run: bool = False, cleanup: bool = False) -
     openai_client = OpenAI(api_key=config.openai_api_key)
     db = SupabaseIngester(config.supabase_url, config.supabase_service_key)
 
+    if config.drop_vector_index_on_start:
+        try:
+            db.drop_embedding_index()
+        except Exception as e:
+            logger.warning(
+                "Could not drop vector index via RPC (%s). "
+                "Run ingestion/setup_bulk_ingest.sql in Supabase SQL Editor for "
+                "faster ingest. Continuing with small upload batches.",
+                e,
+            )
+
+    # Never exceed 5 chunks per upsert — larger batches hit statement timeout on free tier
+    max_upload_batch = 5
+    if config.upload_batch_size > max_upload_batch:
+        logger.info(
+            "Capping UPLOAD_BATCH_SIZE from %d to %d (Supabase statement timeout)",
+            config.upload_batch_size,
+            max_upload_batch,
+        )
+        config = IngestConfig(
+            **{**config.__dict__, "upload_batch_size": max_upload_batch}
+        )
+
     # Resumability: skip already-ingested transcripts
-    existing_keys = db.get_existing_transcript_keys()
+    existing_keys = db.get_existing_transcript_keys(config.min_chunks_to_skip)
     rows_to_process = [
         r for r in rows if f"{r['ticker']}:{r['period_string']}" not in existing_keys
     ]
@@ -181,6 +224,7 @@ def ingest(config: IngestConfig, dry_run: bool = False, cleanup: bool = False) -
     transcripts_processed = 0
 
     for row in tqdm(rows_to_process, desc="Ingesting transcripts"):
+        transcript_id: str | None = None
         try:
             # Upsert company
             company_id = db.upsert_company(row)
@@ -238,8 +282,12 @@ def ingest(config: IngestConfig, dry_run: bool = False, cleanup: bool = False) -
                 batch = all_chunk_records[batch_start : batch_start + config.upload_batch_size]
                 uploaded = db.upsert_chunks(batch)
                 total_chunks_uploaded += uploaded
+                time.sleep(0.5)
 
             transcripts_processed += 1
+
+            if config.pause_between_transcripts_seconds > 0:
+                time.sleep(config.pause_between_transcripts_seconds)
 
             # Save progress
             progress_file.write_text(
@@ -255,6 +303,16 @@ def ingest(config: IngestConfig, dry_run: bool = False, cleanup: bool = False) -
 
         except Exception as e:
             logger.error("Failed to ingest %s %s: %s", row["ticker"], row["period_string"], e)
+            if transcript_id:
+                try:
+                    db.delete_transcript_and_chunks(transcript_id)
+                    logger.info(
+                        "Rolled back partial ingest for %s %s",
+                        row["ticker"],
+                        row["period_string"],
+                    )
+                except Exception as rollback_err:
+                    logger.warning("Rollback failed: %s", rollback_err)
             continue
 
     # Update corpus metadata
@@ -275,6 +333,22 @@ def ingest(config: IngestConfig, dry_run: bool = False, cleanup: bool = False) -
     logger.info("Total chunks in DB: %d", total_chunks)
     logger.info("=" * 60)
 
+    if config.rebuild_vector_index_on_finish:
+        try:
+            db.create_embedding_index()
+        except Exception as e:
+            logger.error(
+                "Could not rebuild vector index. Run ingestion/rebuild_vector_index.sql "
+                "in Supabase SQL Editor when ready.\nError: %s",
+                e,
+            )
+    else:
+        logger.info(
+            "Vector index not rebuilt yet. After ingest finishes, run "
+            "ingestion/rebuild_vector_index.sql in Supabase SQL Editor "
+            "(or set REBUILD_VECTOR_INDEX_ON_FINISH=true)."
+        )
+
     if cleanup or config.cleanup_temp_files:
         cleanup_temp(config.temp_dir)
 
@@ -286,10 +360,20 @@ def cleanup_temp(temp_dir: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Ingest S&P 500 earnings transcripts")
+    parser = argparse.ArgumentParser(description="Ingest earnings transcripts into Supabase")
     parser.add_argument("--dry-run", action="store_true", help="Inspect dataset without uploading")
     parser.add_argument("--max-transcripts", type=int, default=None, help="Limit number of transcripts")
     parser.add_argument("--cleanup", action="store_true", help="Delete temp files after upload")
+    parser.add_argument(
+        "--keep-vector-index",
+        action="store_true",
+        help="Do not drop HNSW index at start (not recommended on free tier)",
+    )
+    parser.add_argument(
+        "--rebuild-vector-index",
+        action="store_true",
+        help="Rebuild HNSW index when ingest completes",
+    )
     parser.add_argument("--start-period", type=str, default=None, help="Override start period")
     parser.add_argument("--end-period", type=str, default=None, help="Override end period")
     args = parser.parse_args()
@@ -308,6 +392,10 @@ def main() -> None:
         config = IngestConfig(**{**config.__dict__, "ingest_start_period": args.start_period})
     if args.end_period:
         config = IngestConfig(**{**config.__dict__, "ingest_end_period": args.end_period})
+    if args.keep_vector_index:
+        config = IngestConfig(**{**config.__dict__, "drop_vector_index_on_start": False})
+    if args.rebuild_vector_index:
+        config = IngestConfig(**{**config.__dict__, "rebuild_vector_index_on_finish": True})
 
     try:
         if args.dry_run:

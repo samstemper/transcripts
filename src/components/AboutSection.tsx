@@ -8,7 +8,7 @@ export function AboutSection() {
     <section id="about" className="panel p-6 space-y-4">
       <h2 className="text-lg font-semibold">About / How it works</h2>
       <p className="text-sm text-foreground/80 leading-relaxed">
-        This app searches recent S&amp;P 500 earnings-call transcripts. It combines structured
+        This app searches Mag 7 (Magnificent Seven) earnings-call transcripts. It combines structured
         filters, semantic retrieval, and cited answer generation. Answers are grounded in retrieved
         transcript excerpts; always check the cited evidence.
       </p>

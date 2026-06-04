@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import time
+from collections import defaultdict
 from typing import Any
 
 from supabase import Client, create_client
@@ -66,40 +68,115 @@ class SupabaseIngester:
         self._transcript_cache[cache_key] = transcript_id
         return transcript_id
 
-    def upsert_chunks(self, chunks: list[dict[str, Any]]) -> int:
+    def drop_embedding_index(self) -> None:
+        """Drop HNSW index so bulk inserts stay under statement timeout."""
+        self.client.rpc("drop_chunks_embedding_index").execute()
+        logger.info("Dropped idx_chunks_embedding for bulk ingest")
+
+    def create_embedding_index(self) -> None:
+        """Rebuild HNSW index after bulk ingest (may take several minutes)."""
+        logger.info("Rebuilding idx_chunks_embedding — this can take 10–30+ minutes...")
+        self.client.rpc("create_chunks_embedding_index").execute()
+        logger.info("Finished rebuilding idx_chunks_embedding")
+
+    def upsert_chunks(
+        self,
+        chunks: list[dict[str, Any]],
+        *,
+        max_retries: int = 4,
+        retry_base_seconds: float = 3.0,
+    ) -> int:
         if not chunks:
             return 0
 
-        result = (
-            self.client.table("chunks")
-            .upsert(chunks, on_conflict="transcript_id,chunk_index")
-            .execute()
-        )
-        return len(result.data)
+        last_error: Exception | None = None
+        for attempt in range(max_retries):
+            try:
+                result = (
+                    self.client.table("chunks")
+                    .upsert(chunks, on_conflict="transcript_id,chunk_index")
+                    .execute()
+                )
+                return len(result.data)
+            except Exception as e:
+                last_error = e
+                err = str(e).lower()
+                retryable = "timeout" in err or "57014" in err or "500" in err
+                if not retryable or attempt == max_retries - 1:
+                    raise
+                wait = retry_base_seconds * (2**attempt)
+                logger.warning(
+                    "Chunk upsert failed (attempt %d/%d), retrying in %.0fs: %s",
+                    attempt + 1,
+                    max_retries,
+                    wait,
+                    e,
+                )
+                time.sleep(wait)
 
-    def get_existing_transcript_keys(self) -> set[str]:
-        """Fetch all ticker:period keys already ingested for resumability."""
-        keys: set[str] = set()
+        if last_error:
+            raise last_error
+        return 0
+
+    def get_existing_transcript_keys(self, min_chunks: int = 15) -> set[str]:
+        """Fetch ticker:period keys that appear fully ingested (enough chunks).
+
+        Transcripts with a row but failed/partial chunk uploads are not skipped,
+        so a resumed run can retry them.
+        """
+        chunk_counts: dict[str, int] = defaultdict(int)
         offset = 0
         page_size = 1000
 
         while True:
             result = (
-                self.client.table("transcripts")
-                .select("ticker, period_string")
+                self.client.table("chunks")
+                .select("transcript_id")
                 .range(offset, offset + page_size - 1)
                 .execute()
             )
             if not result.data:
                 break
             for row in result.data:
-                keys.add(f"{row['ticker']}:{row['period_string']}")
+                chunk_counts[row["transcript_id"]] += 1
             if len(result.data) < page_size:
                 break
             offset += page_size
 
-        logger.info("Found %d existing transcripts in database", len(keys))
+        complete_ids = {tid for tid, count in chunk_counts.items() if count >= min_chunks}
+        keys: set[str] = set()
+
+        if not complete_ids:
+            logger.info("Found 0 fully ingested transcripts (min_chunks=%d)", min_chunks)
+            return keys
+
+        id_list = list(complete_ids)
+        batch_size = 200
+        for batch_start in range(0, len(id_list), batch_size):
+            batch_ids = id_list[batch_start : batch_start + batch_size]
+            result = (
+                self.client.table("transcripts")
+                .select("ticker, period_string")
+                .in_("id", batch_ids)
+                .execute()
+            )
+            for row in result.data:
+                keys.add(f"{row['ticker']}:{row['period_string']}")
+
+        logger.info(
+            "Found %d fully ingested transcripts (min_chunks=%d)",
+            len(keys),
+            min_chunks,
+        )
         return keys
+
+    def delete_transcript_and_chunks(self, transcript_id: str) -> None:
+        """Remove a failed partial ingest so the transcript can be retried."""
+        self.client.table("chunks").delete().eq("transcript_id", transcript_id).execute()
+        self.client.table("transcripts").delete().eq("id", transcript_id).execute()
+        for cache_key, tid in list(self._transcript_cache.items()):
+            if tid == transcript_id:
+                del self._transcript_cache[cache_key]
 
     def update_corpus_metadata(
         self,

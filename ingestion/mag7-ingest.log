@@ -1,0 +1,23 @@
+/Users/samstemper/projects/transcripts/ingestion/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+16:50:45 [INFO] Loading dataset: glopardo/sp500-earnings-transcripts
+16:50:46 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/glopardo/sp500-earnings-transcripts/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+16:50:46 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/glopardo/sp500-earnings-transcripts/434443aaecfe6205ea99e16a8567f65e56c05f62/README.md "HTTP/1.1 200 OK"
+16:50:46 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/glopardo/sp500-earnings-transcripts/resolve/434443aaecfe6205ea99e16a8567f65e56c05f62/sp500-earnings-transcripts.py "HTTP/1.1 404 Not Found"
+16:50:47 [INFO] HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/glopardo/sp500-earnings-transcripts/glopardo/sp500-earnings-transcripts.py "HTTP/1.1 404 Not Found"
+16:50:47 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/glopardo/sp500-earnings-transcripts/revision/434443aaecfe6205ea99e16a8567f65e56c05f62 "HTTP/1.1 200 OK"
+16:50:47 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/glopardo/sp500-earnings-transcripts/resolve/434443aaecfe6205ea99e16a8567f65e56c05f62/.huggingface.yaml "HTTP/1.1 404 Not Found"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+16:50:47 [WARNING] Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+16:50:48 [INFO] HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=glopardo/sp500-earnings-transcripts "HTTP/1.1 200 OK"
+16:50:48 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/glopardo/sp500-earnings-transcripts/tree/434443aaecfe6205ea99e16a8567f65e56c05f62/data?recursive=true&expand=false "HTTP/1.1 200 OK"
+16:50:48 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/glopardo/sp500-earnings-transcripts/tree/434443aaecfe6205ea99e16a8567f65e56c05f62?recursive=false&expand=false "HTTP/1.1 200 OK"
+16:50:48 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/glopardo/sp500-earnings-transcripts/resolve/434443aaecfe6205ea99e16a8567f65e56c05f62/dataset_infos.json "HTTP/1.1 404 Not Found"
+16:50:49 [INFO] Filtered to 36 transcripts (2024Q1–2025Q1, tickers=AAPL,AMZN,GOOG,GOOGL,META,MSFT,NVDA,TSLA)
+16:50:50 [INFO] HTTP Request: POST https://uongnrtgmhaaiqtizgtr.supabase.co/rest/v1/rpc/drop_chunks_embedding_index "HTTP/2 503 Service Unavailable"
+16:50:50 [WARNING] Could not drop vector index via RPC ({'message': 'Could not query the database for the schema cache. Retrying.', 'code': 'PGRST002', 'hint': None, 'details': None}). Run ingestion/setup_bulk_ingest.sql in Supabase SQL Editor for faster ingest. Continuing with small upload batches.
+16:50:53 [INFO] HTTP Request: GET https://uongnrtgmhaaiqtizgtr.supabase.co/rest/v1/chunks?select=transcript_id&offset=0&limit=1000 "HTTP/2 503 Service Unavailable"
+16:50:55 [INFO] HTTP Request: GET https://uongnrtgmhaaiqtizgtr.supabase.co/rest/v1/chunks?select=transcript_id&offset=0&limit=1000 "HTTP/2 503 Service Unavailable"
+16:50:59 [INFO] HTTP Request: GET https://uongnrtgmhaaiqtizgtr.supabase.co/rest/v1/chunks?select=transcript_id&offset=0&limit=1000 "HTTP/2 503 Service Unavailable"
+16:51:04 [INFO] HTTP Request: GET https://uongnrtgmhaaiqtizgtr.supabase.co/rest/v1/chunks?select=transcript_id&offset=0&limit=1000 "HTTP/2 503 Service Unavailable"
+16:51:04 [ERROR] Fatal error: {'message': 'Could not query the database for the schema cache. Retrying.', 'code': 'PGRST002', 'hint': None, 'details': None}

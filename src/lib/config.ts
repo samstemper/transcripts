@@ -17,6 +17,17 @@ function optionalInt(name: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function parseTickerList(raw: string | undefined): string[] | null {
+  if (!raw?.trim()) {
+    return ["AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "NVDA", "TSLA"];
+  }
+  if (raw.trim() === "*") return null;
+  return raw
+    .split(",")
+    .map((t) => t.trim().toUpperCase())
+    .filter(Boolean);
+}
+
 export const config = {
   openaiApiKey: () => requireEnv("OPENAI_API_KEY"),
   supabaseUrl: () => requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
@@ -30,5 +41,6 @@ export const config = {
   rateLimitWindowMs: () => optionalInt("RATE_LIMIT_WINDOW_MS", 60000),
   demoMinPeriod: () => optionalEnv("DEMO_MIN_PERIOD", "2024Q1"),
   demoMaxPeriod: () => optionalEnv("DEMO_MAX_PERIOD", "2025Q1"),
+  demoTickers: () => parseTickerList(process.env.DEMO_TICKERS),
   appName: () => optionalEnv("NEXT_PUBLIC_APP_NAME", "Earnings Insight"),
 };

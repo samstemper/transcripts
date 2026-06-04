@@ -8,12 +8,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Earnings Insight — S&P 500 Earnings Call Search",
+  title: "Earnings Insight — Mag 7 Earnings Call Search",
   description:
-    "Search recent S&P 500 earnings call transcripts with AI-powered semantic retrieval and cited answers.",
+    "Search Magnificent Seven earnings call transcripts with AI-powered semantic retrieval and cited answers.",
   openGraph: {
     title: "Earnings Insight",
-    description: "AI search over S&P 500 earnings call transcripts",
+    description: "AI search over Mag 7 earnings call transcripts",
     type: "website",
   },
 };

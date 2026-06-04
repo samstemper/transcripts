@@ -40,7 +40,7 @@ CRITICAL RULES:
 5. Do not invent facts not in the excerpts.
 6. Prioritize management/executive statements over analyst questions when summarizing what each company said.`;
 
-const DISCOVERY_SYSTEM = `You are a research assistant identifying which S&P 500 companies discussed a topic, based ONLY on provided earnings call excerpts.
+const DISCOVERY_SYSTEM = `You are a research assistant identifying which Mag 7 companies discussed a topic, based ONLY on provided earnings call excerpts.
 
 CRITICAL RULES:
 1. Answer ONLY from the provided excerpts. Do NOT use general knowledge.

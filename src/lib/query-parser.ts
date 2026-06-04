@@ -9,9 +9,7 @@ const INLINE_FILTER_REGEX = /@(\w+):\s*([^\s@]+(?:\s*-\s*[^\s@]+)?)/gi;
 interface ParsedFilters {
   company?: string;
   ticker?: string;
-  time?: string;
-  sector?: string;
-  limit?: string;
+  quarter?: string;
 }
 
 function parseInlineFilters(query: string): ParsedFilters {
@@ -23,11 +21,26 @@ function parseInlineFilters(query: string): ParsedFilters {
     const value = match[2].trim();
     if (key === "company") filters.company = value;
     else if (key === "ticker") filters.ticker = value;
-    else if (key === "time") filters.time = value;
-    else if (key === "sector") filters.sector = value;
-    else if (key === "limit") filters.limit = value;
+    else if (key === "quarter" || key === "time") filters.quarter = value;
   }
   return filters;
+}
+
+/** Parse @quarter: values (single quarter only, e.g. 2025Q1). */
+function parseQuarterFilter(quarterStr: string): TimeFilter | null {
+  const trimmed = quarterStr.trim().toUpperCase();
+  const singleMatch = trimmed.match(/^(\d{4})Q([1-4])$/);
+  if (!singleMatch) return null;
+  const year = parseInt(singleMatch[1], 10);
+  const quarter = parseInt(singleMatch[2], 10);
+  return {
+    periods: [formatPeriod(year, quarter)],
+    yearMin: year,
+    yearMax: year,
+    quarterMin: quarter,
+    quarterMax: quarter,
+    display: formatPeriod(year, quarter),
+  };
 }
 
 function parseTimeFilter(timeStr: string): TimeFilter {
@@ -94,7 +107,7 @@ function validateTimeFilter(filter: TimeFilter | null): string | null {
       if (!parsed) continue;
       const key = parsed.year * 10 + parsed.quarter;
       if (key < demoMinKey || key > demoMaxKey) {
-        return `No transcripts were found for ${p}. This demo currently includes calls through ${config.demoMaxPeriod()}. Try @time: ${config.demoMaxPeriod()} or @time: ${demoMin.year}.`;
+        return `No transcripts were found for ${p}. This demo currently includes calls through ${config.demoMaxPeriod()}. Try @quarter: ${config.demoMaxPeriod()}.`;
       }
     }
   }
@@ -103,14 +116,14 @@ function validateTimeFilter(filter: TimeFilter | null): string | null {
     const minKey = filter.yearMin * 10 + (filter.quarterMin ?? 1);
     const maxKey = (filter.yearMax ?? filter.yearMin) * 10 + (filter.quarterMax ?? 4);
     if (minKey > demoMaxKey || maxKey < demoMinKey) {
-      return `No transcripts were found for ${filter.display}. This demo currently includes calls through ${config.demoMaxPeriod()}. Try @time: ${config.demoMaxPeriod()} or @time: ${demoMin.year}.`;
+      return `No transcripts were found for ${filter.display}. This demo currently includes calls through ${config.demoMaxPeriod()}. Try @quarter: ${config.demoMaxPeriod()}.`;
     }
   }
 
   return null;
 }
 
-const QUERY_PLAN_SYSTEM = `You parse user queries about S&P 500 earnings call transcripts into structured JSON plans.
+const QUERY_PLAN_SYSTEM = `You parse user queries about Mag 7 (Magnificent Seven) earnings call transcripts into structured JSON plans.
 
 Output ONLY valid JSON with this schema:
 {
@@ -191,14 +204,25 @@ export async function parseQuery(rawQuery: string): Promise<{
     }
   }
 
-  const timeStr = inlineFilters.time ?? (llmPlan.time_filter as string | null) ?? null;
-  const timeFilter = timeStr ? parseTimeFilter(timeStr) : null;
-  const timeError = validateTimeFilter(timeFilter);
+  let timeFilter: TimeFilter | null = null;
+  let timeError: string | null = null;
 
-  const sectorFilter = inlineFilters.sector ?? (llmPlan.sector_filter as string | null) ?? null;
-  const limit = inlineFilters.limit
-    ? parseInt(inlineFilters.limit, 10)
-    : (llmPlan.limit as number) ?? (queryType === "targeted" ? 15 : 10);
+  if (inlineFilters.quarter) {
+    timeFilter = parseQuarterFilter(inlineFilters.quarter);
+    if (!timeFilter) {
+      timeError = `Invalid quarter "${inlineFilters.quarter}". Use format @quarter: 2025Q1.`;
+    } else {
+      timeError = validateTimeFilter(timeFilter);
+    }
+  } else {
+    const timeStr = (llmPlan.time_filter as string | null) ?? null;
+    timeFilter = timeStr ? parseTimeFilter(timeStr) : null;
+    timeError = validateTimeFilter(timeFilter);
+  }
+
+  const sectorFilter = (llmPlan.sector_filter as string | null) ?? null;
+  const limit =
+    (llmPlan.limit as number) ?? (queryType === "targeted" ? 15 : 10);
 
   const plan: QueryPlan = {
     query_type: queryType,
@@ -228,13 +252,13 @@ export function buildInterpretedQuery(plan: QueryPlan): {
       : plan.companies.length
         ? plan.companies
         : plan.query_type === "discovery"
-          ? ["All S&P 500 companies"]
+          ? ["All Mag 7 companies"]
           : [];
 
   return {
     topic: plan.semantic_topic,
     companies,
     period,
-    evidence_note: "recent S&P 500 earnings-call excerpts",
+    evidence_note: "recent Mag 7 earnings-call excerpts",
   };
 }

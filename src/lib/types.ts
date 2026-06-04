@@ -75,27 +75,29 @@ export interface CompanyMatch {
   sector: string | null;
 }
 
-export const EXAMPLE_QUERIES = {
-  discovery: [
-    "Which companies are talking about China demand weakness? @time: 2025Q1",
-    "Which companies mention tariffs? @time: 2024-2025",
-    "Who is discussing AI infrastructure spending?",
-  ],
-  targeted: [
-    "What did Microsoft say about AI capex? @time: 2025Q1",
-    "What did Nvidia say about data center demand? @time: 2025Q1",
-    "What did Walmart say about consumer weakness? @time: 2024",
-  ],
-  comparison: [
-    "Compare Microsoft and Google on AI infrastructure spending @time: 2024-2025",
-    "Compare Nvidia and AMD on data center demand @time: 2025Q1",
-    "Compare Walmart and Target on consumer weakness @time: 2024",
-  ],
-} as const;
+export const MAG7_TICKERS = [
+  "AAPL",
+  "MSFT",
+  "GOOGL",
+  "GOOG",
+  "AMZN",
+  "META",
+  "NVDA",
+  "TSLA",
+] as const;
+
+export const EXAMPLE_QUERIES = [
+  "What did Microsoft say about AI capex?",
+  "What did Nvidia say about data center demand?",
+  "Compare Microsoft and Google on AI infrastructure spending",
+  "Which Mag 7 companies mention tariffs?",
+  "What did Apple say about iPhone demand?",
+  "Compare Nvidia and Amazon on cloud and AI capex",
+] as const;
 
 export const DATASET_ATTRIBUTION = {
   name: "glopardo/sp500-earnings-transcripts",
   url: "https://huggingface.co/datasets/glopardo/sp500-earnings-transcripts",
-  fullCoverage: "2013Q2–2025Q1",
-  demoCoverage: "2024Q1–2025Q1",
+  fullCoverage: "2013Q2–2025Q1 (S&P 500 source)",
+  demoCoverage: "Mag 7 · 2024Q1–2025Q1",
 } as const;

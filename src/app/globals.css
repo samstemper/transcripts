@@ -53,6 +53,13 @@
            transition-colors text-left;
   }
 
+  .example-grid-card {
+    @apply px-4 py-3.5 rounded-xl bg-surface border border-border
+           shadow-sm transition-all duration-150
+           hover:border-accent/35 hover:bg-accent/[0.04] hover:shadow-md
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30;
+  }
+
   .panel {
     @apply bg-surface border border-border rounded-xl shadow-sm;
   }
