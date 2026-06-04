@@ -1,6 +1,6 @@
 # Earnings Insight
 
-**Proof of concept** — semantic search over earnings-call transcripts with cited answers, on a **small demo corpus** (Mag 7 and a short quarter range), not broad market coverage. The ingestion pipeline can scale to more tickers and periods; this repo defaults to a narrow slice so the idea is easy to try end-to-end.
+Semantic search over earnings-call transcripts with cited answers, on a **small demo corpus** (Mag 7 and a short quarter range), not broad market coverage. The ingestion pipeline can scale to more tickers and periods; this repo defaults to a narrow slice so the idea is easy to try end-to-end.
 
 Search Magnificent Seven (Mag 7) earnings-call transcripts with natural-language questions. Answers are grounded in retrieved excerpts with citations.
 
