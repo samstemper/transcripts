@@ -1,8 +1,33 @@
 name = "sp500-earnings-rag"
-compatibility_date = "2025-04-01"
+main = ".open-next/worker.js"
+compatibility_date = "2026-06-04"
+workers_dev = true
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".open-next/worker"
+
+[[routes]]
+pattern = "transcripts.samstemper.com"
+custom_domain = true
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "sp500-earnings-rag"
 
 [vars]
-# Public vars only — secrets go in Cloudflare dashboard or .dev.vars
+# Public vars only — never put API keys here.
+# Secrets: OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY (Cloudflare dashboard or wrangler secret put).
 NEXT_PUBLIC_APP_NAME = "Earnings Insight"
+NEXT_PUBLIC_SUPABASE_URL = "https://kaytvbbxpimfgwalzduh.supabase.co"
+OPENAI_CHAT_MODEL = "gpt-4o-mini"
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+DEMO_MIN_PERIOD = "2024Q1"
+DEMO_MAX_PERIOD = "2025Q1"
+DEMO_TICKERS = "AAPL,MSFT,GOOGL,GOOG,AMZN,META,NVDA,TSLA"
+MAX_QUERY_LENGTH = "500"
+MAX_RETRIEVED_CHUNKS = "30"
+MAX_ANSWER_TOKENS = "1500"
+RATE_LIMIT_REQUESTS = "20"
+RATE_LIMIT_WINDOW_MS = "60000"

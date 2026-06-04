@@ -39,7 +39,13 @@ Search Magnificent Seven (Mag 7) earnings-call transcripts with natural-language
 
 ## Deploy (Cloudflare)
 
-Set the same env vars in the Cloudflare dashboard, then:
+1. `npx wrangler login` (once)
+2. In **Workers & Pages → sp500-earnings-rag → Settings → Variables and Secrets**, set **Secrets**:
+   - `OPENAI_API_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+3. Set **Variables** (plain text):
+   - `NEXT_PUBLIC_SUPABASE_URL` (your project URL)
+4. Deploy (keeps dashboard secrets/URL; `wrangler.toml` supplies the rest):
 
 ```bash
 npm run deploy:cloudflare

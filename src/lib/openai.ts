@@ -5,7 +5,11 @@ let client: OpenAI | null = null;
 
 export function getOpenAI(): OpenAI {
   if (!client) {
-    client = new OpenAI({ apiKey: config.openaiApiKey() });
+    // Use Workers' native fetch; the default Node HTTP stack can fail with "Connection error".
+    client = new OpenAI({
+      apiKey: config.openaiApiKey(),
+      fetch: globalThis.fetch.bind(globalThis),
+    });
   }
   return client;
 }
